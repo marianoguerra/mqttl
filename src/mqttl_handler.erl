@@ -13,7 +13,8 @@
 
 -ignore_xref([behaviour_info/1]).
 
--record(state, {proc_state=init, handler, handler_state, will_msg, timeout=30000}).
+-record(state, {proc_state=init, handler, handler_state, will_msg,
+                timeout=30000, send}).
 
 behaviour_info(callbacks) ->
     [{init, 1},
@@ -52,10 +53,12 @@ stop(Module) ->
 
 init([Opts]) ->
     {handler, Handler} = proplists:lookup(handler, Opts),
+    {mqttl_send, Send} = proplists:lookup(mqttl_send, Opts),
     Timeout = proplists:get_value(inactive_timeout_ms, Opts, 30000),
-    UserHandlerOpts = [],
+    UserHandlerOpts = [{mqttl_send, Send}],
     {ok, HandlerState} = Handler:init(UserHandlerOpts),
-    State = #state{handler=Handler, handler_state=HandlerState, timeout=Timeout},
+    State = #state{handler=Handler, handler_state=HandlerState,
+                   timeout=Timeout, send=Send},
     {ok, State}.
 
 handle_call({msg, Msg}, _From, State) ->

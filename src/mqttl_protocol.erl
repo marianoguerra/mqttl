@@ -6,6 +6,8 @@
 
 -record(state, {parse_state, rest, timeout=180000, pid}).
 
+-include("rabbit_mqtt_frame.hrl").
+
 start_link(Ref, Socket, Transport, Opts) ->
 	Pid = spawn_link(?MODULE, init, [Ref, Socket, Transport, Opts]),
 	{ok, Pid}.
@@ -14,7 +16,12 @@ init(Ref, Socket, Transport, Opts) ->
 	ok = ranch:accept_ack(Ref),
     ParseState = rabbit_mqtt_frame:initial_state(),
     HandlerOpts = proplists:get_value(handler_opts, Opts, []),
-    {ok, Pid} = mqttl_handler:start_link(HandlerOpts),
+    Send = fun(MsgId, Topic, Data) ->
+                   Msg = make_pub_msg(MsgId, Topic, Data),
+                   send(Socket, Transport, Msg)
+           end,
+    HandlerOptsAndSend = [{mqttl_send, Send}|HandlerOpts],
+    {ok, Pid} = mqttl_handler:start_link(HandlerOptsAndSend),
     State = #state{parse_state=ParseState, rest= <<>>, pid=Pid},
 	loop(Socket, Transport, State).
 
@@ -64,6 +71,14 @@ stop(Pid, Socket, Transport) ->
     mqttl_handler:stop(Pid),
     ok = Transport:close(Socket).
 
+%% private api
+
 send(Socket, Transport, Msg) ->
     Bin = rabbit_mqtt_frame:serialise(Msg),
     Transport:send(Socket, Bin).
+
+make_pub_msg(MsgId, Topic, Payload) ->
+    Qos = 0,
+    #mqtt_frame{fixed=#mqtt_frame_fixed{type=?PUBLISH, qos=Qos},
+                variable=#mqtt_frame_publish{topic_name=Topic, message_id=MsgId},
+                payload=Payload}.

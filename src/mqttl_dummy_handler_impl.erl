@@ -5,9 +5,9 @@
          disconnect/1, error/2, publish/2, subscribe/2, unsubscribe/2,
          login/2]).
 
--record(state, {}).
+-record(state, {send}).
 
-init([]) -> {ok, #state{}}.
+init([{mqttl_send, Send}]) -> {ok, #state{send=Send}}.
 ping(State=#state{}) -> {ok, State}.
 connect(State=#state{}) -> {ok, State}.
 disconnect(State=#state{}) -> {ok, State}.
