@@ -1,0 +1,1 @@
+-define(MQTT_3_1_1_VERSION, 4).

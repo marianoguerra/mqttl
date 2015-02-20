@@ -1,0 +1,14 @@
+{application, mqttl,
+ [
+  {description, ""},
+  {vsn, "1"},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib,
+                  ranch,
+                  lager
+                 ]},
+  {mod, { mqttl_app, []}},
+  {env, []}
+ ]}.
