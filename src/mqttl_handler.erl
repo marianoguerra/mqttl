@@ -59,18 +59,18 @@ init([Opts]) ->
     {ok, State}.
 
 handle_call({msg, Msg}, _From, State) ->
-    %lager:info("received ~p", [Msg]),
+    lager:debug("received ~p", [Msg]),
     {Reply, NewState} = process_message(Msg, State),
     {reply, Reply, NewState, NewState#state.timeout};
 
 handle_call({error, Error}, _From, State=#state{handler=Handler, handler_state=HState}) ->
-    %lager:warning("error receiving data ~p", [Error]),
+    lager:debug("error receiving data ~p", [Error]),
     {ok, NewHState} = Handler:error(HState, Error),
     NewState = State#state{handler_state=NewHState},
     {reply, ok, NewState, NewState#state.timeout};
 
 handle_call(stop, _From, State=#state{handler=Handler, handler_state=HState}) ->
-    %lager:info("stopping handler"),
+    lager:debug("stopping handler"),
     {ok, NewHState} = Handler:stop(HState),
     NewState = State#state{handler_state=NewHState},
     {stop, normal, stopped, NewState};

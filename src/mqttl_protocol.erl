@@ -40,15 +40,15 @@ handle(Socket, Transport, State=#state{parse_state=ParseState, pid=Pid}, Data) -
                 ok -> 
                     loop(Socket, Transport, State1);
                 {send, Msg} ->
-                    lager:info("replying ~p", [Msg]),
+                    lager:debug("replying ~p", [Msg]),
                     send(Socket, Transport, Msg),
                     loop(Socket, Transport, State1);
                 {send_and_disconnect, Msg, Reason} ->
-                    lager:info("replying and disconnecting ~p, reason ~p", [Msg, Reason]),
+                    lager:debug("replying and disconnecting ~p, reason ~p", [Msg, Reason]),
                     send(Socket, Transport, Msg),
                     stop(Pid, Socket, Transport);
                 {disconnect, Reason} ->
-                    lager:info("handler requested disconnection ~p", [Reason]),
+                    lager:debug("handler requested disconnection ~p", [Reason]),
                     stop(Pid, Socket, Transport)
             end;
         {error, _Reason}=Error ->
