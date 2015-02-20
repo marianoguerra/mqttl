@@ -41,19 +41,19 @@ unsubscribe(State=#state{}, Topics) ->
 
 timeout(State=#state{}, InactiveMs) ->
     lager:info("session was inactive for ~p ms", [InactiveMs]),
-    State.
+    {ok, State}.
 
 info(State=#state{}, Msg) ->
     lager:info("received info message '~p'", [Msg]),
-    State.
+    {ok, State}.
 
 stop(State=#state{}) ->
     lager:info("stop"),
-    State.
+    {ok, State}.
 
 terminate(State=#state{}, Reason) ->
     lager:info("terminate ~p", [Reason]),
-    State.
+    {ok, State}.
 
 login(State=#state{}, {Username, Password}) ->
     lager:info("login ~p", [Username, Password]),

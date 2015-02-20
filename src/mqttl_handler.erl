@@ -59,17 +59,19 @@ init([Opts]) ->
     {ok, State}.
 
 handle_call({msg, Msg}, _From, State) ->
-    lager:info("received ~p", [Msg]),
+    %lager:info("received ~p", [Msg]),
     {Reply, NewState} = process_message(Msg, State),
     {reply, Reply, NewState, NewState#state.timeout};
 
-handle_call({error, Error}, _From, State) ->
-    lager:warning("error receiving data ~p", [Error]),
-    {reply, ok, State, State#state.timeout};
+handle_call({error, Error}, _From, State=#state{handler=Handler, handler_state=HState}) ->
+    %lager:warning("error receiving data ~p", [Error]),
+    {ok, NewHState} = Handler:error(HState, Error),
+    NewState = State#state{handler_state=NewHState},
+    {reply, ok, NewState, NewState#state.timeout};
 
 handle_call(stop, _From, State=#state{handler=Handler, handler_state=HState}) ->
-    lager:info("stopping handler"),
-    NewHState = Handler:stop(HState),
+    %lager:info("stopping handler"),
+    {ok, NewHState} = Handler:stop(HState),
     NewState = State#state{handler_state=NewHState},
     {stop, normal, stopped, NewState};
 
@@ -82,12 +84,12 @@ handle_cast(Msg, State) ->
     {noreply, State}.
 
 handle_info(timeout, State=#state{handler=Handler, handler_state=HState}) ->
-    NewHState = Handler:timeout(HState, State#state.timeout),
+    {ok, NewHState} = Handler:timeout(HState, State#state.timeout),
     NewState = State#state{handler_state=NewHState},
     {noreply, NewState};
 
 handle_info(Msg, State=#state{handler=Handler, handler_state=HState}) ->
-    NewHState = Handler:info(HState, Msg),
+    {ok, NewHState} = Handler:info(HState, Msg),
     NewState = State#state{handler_state=NewHState},
     {noreply, NewState}.
 
@@ -120,10 +122,10 @@ process_request(?CONNECT, #mqtt_frame{variable=#mqtt_frame_connect{
 
     if ProtocolSupported ->
            ReplyMsg = conn_ack_msg(?CONNACK_ACCEPT),
-           {ok, NewHandlerState} = Handler:connect(HandlerState),
+           {ok, NewHState} = Handler:connect(HandlerState),
            WillMsg = make_will_msg(Var),
            {{send, ReplyMsg},
-            State#state{proc_state=connected, handler_state=NewHandlerState,
+            State#state{proc_state=connected, handler_state=NewHState,
                        will_msg=WillMsg}};
 
        InvalidId ->
@@ -140,9 +142,9 @@ process_request(?CONNECT, #mqtt_frame{variable=#mqtt_frame_connect{
 
 process_request(?PINGREQ, #mqtt_frame{},
                 State=#state{handler=Handler, handler_state=HandlerState}) ->
-    {ok, NewHandlerState} = Handler:ping(HandlerState),
+    {ok, NewHState} = Handler:ping(HandlerState),
     Msg = #mqtt_frame{fixed=#mqtt_frame_fixed{type=?PINGRESP}},
-    {{send, Msg}, State#state{handler_state=NewHandlerState}};
+    {{send, Msg}, State#state{handler_state=NewHState}};
 
 process_request(?SUBSCRIBE,
                 #mqtt_frame{variable=#mqtt_frame_subscribe{message_id=MessageId,
@@ -151,9 +153,9 @@ process_request(?SUBSCRIBE,
                 State=#state{handler=Handler, handler_state=HandlerState}) ->
 
     TupleTopics = to_tuple_topics(Topics),
-    {ok, QosResponse, NewHandlerState} = Handler:subscribe(HandlerState, TupleTopics),
+    {ok, QosResponse, NewHState} = Handler:subscribe(HandlerState, TupleTopics),
     Msg = sub_ack_msg(MessageId, QosResponse),
-    {{send, Msg}, State#state{handler_state=NewHandlerState}};
+    {{send, Msg}, State#state{handler_state=NewHState}};
 
 process_request(?UNSUBSCRIBE,
                 #mqtt_frame{variable=#mqtt_frame_subscribe{message_id=MessageId,
@@ -162,9 +164,9 @@ process_request(?UNSUBSCRIBE,
                 State=#state{handler=Handler, handler_state=HandlerState}) ->
 
     TopicNames = to_topic_names(Topics),
-    {ok, NewHandlerState} = Handler:unsubscribe(HandlerState, TopicNames),
+    {ok, NewHState} = Handler:unsubscribe(HandlerState, TopicNames),
     Msg = unsub_ack_msg(MessageId),
-    {{send, Msg}, State#state{handler_state=NewHandlerState}};
+    {{send, Msg}, State#state{handler_state=NewHState}};
 
 process_request(?PUBLISH,
                 #mqtt_frame{fixed=#mqtt_frame_fixed{qos=Qos, retain=Retain,
@@ -174,13 +176,13 @@ process_request(?PUBLISH,
                             payload=Payload},
                 State=#state{handler=Handler, handler_state=HandlerState}) ->
     Args = {Topic, Qos, Dup, Retain, MessageId, Payload},
-    {ok, NewHandlerState} = Handler:publish(HandlerState, Args),
-    {ok, State#state{handler_state=NewHandlerState}};
+    {ok, NewHState} = Handler:publish(HandlerState, Args),
+    {ok, State#state{handler_state=NewHState}};
 
 process_request(?DISCONNECT, #mqtt_frame{},
                 State=#state{handler=Handler, handler_state=HandlerState}) ->
-    {ok, NewHandlerState} = Handler:disconnect(HandlerState),
-    {{disconnect, client_disconnect}, State#state{handler_state=NewHandlerState}}.
+    {ok, NewHState} = Handler:disconnect(HandlerState),
+    {{disconnect, client_disconnect}, State#state{handler_state=NewHState}}.
 
 conn_ack_msg(ReturnCode) ->
     #mqtt_frame{fixed=#mqtt_frame_fixed{type=?CONNACK},
