@@ -52,7 +52,7 @@ stop(Module) ->
 
 init([Opts]) ->
     {handler, Handler} = proplists:lookup(handler, Opts),
-    Timeout = proplists:get_value(inactive_timeout_ms, Opts, 1000),
+    Timeout = proplists:get_value(inactive_timeout_ms, Opts, 30000),
     UserHandlerOpts = [],
     {ok, HandlerState} = Handler:init(UserHandlerOpts),
     State = #state{handler=Handler, handler_state=HandlerState, timeout=Timeout},
