@@ -42,6 +42,10 @@
 -define(CONNACK_CREDENTIALS, 4). %% bad user name or password
 -define(CONNACK_AUTH,        5). %% not authorized
 
+%% suback return codes
+
+-define(SUBACK_FAILURE, 16#80).
+
 %% qos levels
 
 -define(QOS_0, 0).
