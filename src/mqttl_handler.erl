@@ -157,9 +157,13 @@ process_request(?SUBSCRIBE,
                 State=#state{handler=Handler, handler_state=HandlerState}) ->
 
     TupleTopics = to_tuple_topics(Topics),
-    {ok, QosResponse, NewHState} = Handler:subscribe(HandlerState, TupleTopics),
-    Msg = sub_ack_msg(MessageId, QosResponse),
-    {{send, Msg}, State#state{handler_state=NewHState}};
+    case Handler:subscribe(HandlerState, TupleTopics) of
+        {ok, QosResponse, NewHState}  ->
+            Msg = sub_ack_msg(MessageId, QosResponse),
+            {{send, Msg}, State#state{handler_state=NewHState}};
+        {error, _NewHState, Reason} ->
+            {disconnect, Reason}
+    end;
 
 process_request(?UNSUBSCRIBE,
                 #mqtt_frame{variable=#mqtt_frame_subscribe{message_id=MessageId,
@@ -180,8 +184,12 @@ process_request(?PUBLISH,
                             payload=Payload},
                 State=#state{handler=Handler, handler_state=HandlerState}) ->
     Args = {Topic, Qos, Dup, Retain, MessageId, Payload},
-    {ok, NewHState} = Handler:publish(HandlerState, Args),
-    {ok, State#state{handler_state=NewHState}};
+    case Handler:publish(HandlerState, Args) of
+        {ok, NewHState} ->
+            {ok, State#state{handler_state=NewHState}};
+        {error, _NewHState, Reason} ->
+            {disconnect, Reason}
+    end;
 
 process_request(?DISCONNECT, #mqtt_frame{},
                 State=#state{handler=Handler, handler_state=HandlerState}) ->
