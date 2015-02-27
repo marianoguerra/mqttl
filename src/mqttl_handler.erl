@@ -48,7 +48,6 @@ handle_error(Pid, Error) ->
 stop(Module) ->
     gen_server:call(Module, stop).
 
-
 %% Server implementation, a.k.a.: callbacks
 
 init([Opts]) ->
@@ -113,25 +112,28 @@ process_message(#mqtt_frame{fixed=#mqtt_frame_fixed{type=Type}}=Msg, State) ->
     process_request(Type, Msg, State).
 
 process_request(?CONNECT, #mqtt_frame{variable=#mqtt_frame_connect{
-                                          username   = _Username,
-                                          password   = _Password,
+                                          username   = Username,
+                                          password   = Password,
                                           proto_ver  = ProtoVersion,
                                           clean_sess = CleanSess,
                                           client_id  = ClientId0,
                                           keep_alive = _Keepalive}=Var},
-                State=#state{handler=Handler, handler_state=HandlerState}) ->
+                State) ->
 
     InvalidId = ClientId0 =:= [] andalso CleanSess =:= false,
     ProtocolSupported = ProtoVersion == ?MQTT_3_1_1_VERSION,
 
     if ProtocolSupported ->
-           ReplyMsg = conn_ack_msg(?CONNACK_ACCEPT),
-           {ok, NewHState} = Handler:connect(HandlerState),
-           WillMsg = make_will_msg(Var),
-           {{send, ReplyMsg},
-            State#state{proc_state=connected, handler_state=NewHState,
-                       will_msg=WillMsg}};
 
+           {Reply, State1} = case {Username, Password} of
+                                {undefined, _} ->
+                                    {conn_ack_msg(?CONNACK_CREDENTIALS), State};
+                                {_, undefined} ->
+                                    {conn_ack_msg(?CONNACK_CREDENTIALS), State};
+                                {_, _} ->
+                                     process_login(State, Username, Password, Var)
+                            end,
+           {{send, Reply}, State1};
        InvalidId ->
            ReplyMsg = conn_ack_msg(?CONNACK_INVALID_ID),
            State1 = State#state{proc_state=error},
@@ -222,3 +224,17 @@ make_will_msg(#mqtt_frame_connect{will_retain=Retain, will_qos=Qos,
                                   will_topic=Topic, will_msg=Msg}) ->
 
     #mqtt_msg{retain=Retain, qos=Qos, topic=Topic, dup=false, payload= Msg}.
+
+process_login(State=#state{handler=Handler, handler_state=HState},
+              Username, Password, Var) ->
+    WillMsg = make_will_msg(Var),
+    {ok, HState1} = Handler:connect(HState),
+    State1 = State#state{proc_state=connected,
+                         handler_state=HState1,
+                         will_msg=WillMsg},
+    case Handler:login(HState1, {Username, Password}) of
+        {ok, HState2} ->
+            {conn_ack_msg(?CONNACK_ACCEPT), State1#state{handler_state=HState2}};
+        {error, HState2, _Reason} ->
+            {conn_ack_msg(?CONNACK_AUTH), State1#state{handler_state=HState2}}
+    end.
