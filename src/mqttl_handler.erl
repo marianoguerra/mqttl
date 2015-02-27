@@ -53,7 +53,7 @@ stop(Module) ->
 
 init([Opts]) ->
     {handler, Handler} = proplists:lookup(handler, Opts),
-    HandlerOpts = proplists:get_value(handler_opts, []),
+    HandlerOpts = proplists:get_value(user_handler_opts, []),
     {mqttl_send, Send} = proplists:lookup(mqttl_send, Opts),
     Timeout = proplists:get_value(inactive_timeout_ms, Opts, 30000),
     UserHandlerOpts = [{mqttl_send, Send}|HandlerOpts],
