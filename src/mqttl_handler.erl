@@ -161,8 +161,8 @@ process_request(?SUBSCRIBE,
         {ok, QosResponse, NewHState}  ->
             Msg = sub_ack_msg(MessageId, QosResponse),
             {{send, Msg}, State#state{handler_state=NewHState}};
-        {error, _NewHState, Reason} ->
-            {disconnect, Reason}
+        {error, NewHState, Reason} ->
+            {{disconnect, Reason}, State#state{handler_state=NewHState}}
     end;
 
 process_request(?UNSUBSCRIBE,
@@ -187,8 +187,8 @@ process_request(?PUBLISH,
     case Handler:publish(HandlerState, Args) of
         {ok, NewHState} ->
             {ok, State#state{handler_state=NewHState}};
-        {error, _NewHState, Reason} ->
-            {disconnect, Reason}
+        {error, NewHState, Reason} ->
+            {{disconnect, Reason}, State#state{handler_state=NewHState}}
     end;
 
 process_request(?DISCONNECT, #mqtt_frame{},
