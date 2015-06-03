@@ -122,7 +122,7 @@ process_request(?CONNECT, #mqtt_frame{variable=#mqtt_frame_connect{
 
     InvalidId = ClientId0 =:= [] andalso CleanSess =:= false,
     ProtocolSupported = ((ProtoVersion == ?MQTT_3_1_1_VERSION) orelse
-                         (ProtoVersion == ?MQIsdp_VERSION),
+                         (ProtoVersion == ?MQIsdp_VERSION)),
 
     if ProtocolSupported ->
 
