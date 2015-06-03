@@ -79,11 +79,11 @@ handle_call(stop, _From, State=#state{handler=Handler, handler_state=HState}) ->
     {stop, normal, stopped, NewState};
 
 handle_call(Msg, _From, State) ->
-    io:format("Unexpected handle call message: ~p~n",[Msg]),
+    lager:warning("Unexpected handle call message: ~p~n",[Msg]),
     {reply, {error, unexpected_message}, State, State#state.timeout}.
 
 handle_cast(Msg, State) ->
-    io:format("Unexpected handle cast message: ~p~n",[Msg]),
+    lager:warning("Unexpected handle cast message: ~p~n",[Msg]),
     {noreply, State}.
 
 handle_info(timeout, State=#state{handler=Handler, handler_state=HState}) ->
